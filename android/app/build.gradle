@@ -3,6 +3,16 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.neonrunner.app"
     compileSdk rootProject.ext.compileSdkVersion
+    
+    signingConfigs {
+        release {
+            storeFile file('C:/Users/efe/Desktop/coding/my-release-key.jks')
+            storePassword 'HIDDEN_PASSWORD'
+            keyAlias 'key0'
+            keyPassword 'HIDDEN_PASSWORD'
+        }
+    }
+    
     defaultConfig {
         applicationId "com.neonrunner.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -20,6 +30,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     // Java 17 compatibility for systems without Java 21
