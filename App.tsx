@@ -24,11 +24,11 @@ const App: React.FC = () => {
 
   // Lazy Initialize from LocalStorage
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(() => {
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('neon_runner_max_level');
-          return saved ? parseInt(saved, 10) : 1;
-      }
-      return 1;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_max_level');
+      return saved ? parseInt(saved, 10) : 1;
+    }
+    return 1;
   });
 
   // Infinite Mode Stats
@@ -37,15 +37,15 @@ const App: React.FC = () => {
 
   // Lazy Initialize High Score
   const [highScore, setHighScore] = useState(() => {
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('neon_runner_highscore');
-          return saved ? parseInt(saved, 10) : 0;
-      }
-      return 0;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_highscore');
+      return saved ? parseInt(saved, 10) : 0;
+    }
+    return 0;
   });
 
   const toggleMute = useCallback(() => {
-      setMuted(prev => !prev);
+    setMuted(prev => !prev);
   }, []);
 
   const handleStartSystem = useCallback(() => {
@@ -84,48 +84,48 @@ const App: React.FC = () => {
   }, []);
 
   const handleProgressUpdate = useCallback((newProgress: number) => {
-      setProgress(newProgress);
+    setProgress(newProgress);
   }, []);
 
   const handleToggleControl = useCallback(() => {
-      setIsSwipeControl(prev => !prev);
+    setIsSwipeControl(prev => !prev);
   }, []);
 
   const handleGameOver = useCallback(() => {
     setGameOver((prev) => {
-        if (prev) return prev;
+      if (prev) return prev;
 
-        if (isInfiniteMode) {
-            setHighScore(curr => {
-                const newHigh = Math.max(curr, score);
-                localStorage.setItem('neon_runner_highscore', newHigh.toString());
-                return newHigh;
-            });
-        }
-        return true;
+      if (isInfiniteMode) {
+        setHighScore(curr => {
+          const newHigh = Math.max(curr, score);
+          localStorage.setItem('neon_runner_highscore', newHigh.toString());
+          return newHigh;
+        });
+      }
+      return true;
     });
   }, [isInfiniteMode, score]);
 
   const handleLevelComplete = useCallback(() => {
-     if (isInfiniteMode) return;
+    if (isInfiniteMode) return;
 
-     setLevelComplete(true);
-     setGameStarted(false);
+    setLevelComplete(true);
+    setGameStarted(false);
 
-     setMaxUnlockedLevel(prev => {
-         const next = Math.max(prev, level + 1);
-         localStorage.setItem('neon_runner_max_level', next.toString());
-         return next;
-     });
+    setMaxUnlockedLevel(prev => {
+      const next = Math.max(prev, level + 1);
+      localStorage.setItem('neon_runner_max_level', next.toString());
+      return next;
+    });
   }, [level, isInfiniteMode]);
 
   const handleReturnToMenu = useCallback(() => {
-      setGameStarted(false);
-      setGameOver(false);
-      setLevelComplete(false);
-      setIsInfiniteMode(false);
-      setPaused(false);
-      setProgress(0);
+    setGameStarted(false);
+    setGameOver(false);
+    setLevelComplete(false);
+    setIsInfiniteMode(false);
+    setPaused(false);
+    setProgress(0);
   }, []);
 
   const handleRestart = useCallback(() => {
@@ -139,7 +139,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleScoreUpdate = useCallback((newScore: number) => {
-      setScore(newScore);
+    setScore(newScore);
   }, []);
 
   const handleTogglePause = useCallback(() => {
@@ -152,14 +152,57 @@ const App: React.FC = () => {
     handleReturnToMenu();
   }, [handleReturnToMenu]);
 
+  // --- Android Hardware Back Button Handler ---
+  useEffect(() => {
+    const handleBackButton = (e: PopStateEvent) => {
+      e.preventDefault();
+
+      // If paused, resume game
+      if (paused) {
+        setPaused(false);
+        return;
+      }
+
+      // If game is running, pause it
+      if (gameStarted && !gameOver && !levelComplete) {
+        setPaused(true);
+        // Push state to prevent actual back navigation
+        window.history.pushState(null, '', window.location.href);
+        return;
+      }
+
+      // If on mission select, go back to title
+      if (!showTitleScreen && !gameStarted) {
+        setShowTitleScreen(true);
+        window.history.pushState(null, '', window.location.href);
+        return;
+      }
+
+      // If game over or level complete, return to menu
+      if (gameOver || levelComplete) {
+        handleReturnToMenu();
+        window.history.pushState(null, '', window.location.href);
+        return;
+      }
+    };
+
+    // Push initial state to enable back button interception
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handleBackButton);
+
+    return () => {
+      window.removeEventListener('popstate', handleBackButton);
+    };
+  }, [gameStarted, gameOver, levelComplete, paused, showTitleScreen, handleReturnToMenu]);
+
   return (
     <div className="fixed inset-0 bg-black overflow-hidden z-0">
       <AudioManager
-          url="soundtrack.mp3"
-          started={!showTitleScreen}
-          muted={muted}
-          gameOver={gameOver}
-          levelComplete={levelComplete}
+        url="soundtrack.mp3"
+        started={!showTitleScreen}
+        muted={muted}
+        gameOver={gameOver}
+        levelComplete={levelComplete}
       />
 
       <Canvas
