@@ -1,0 +1,30 @@
+{
+  "name": "neon-runner-2084",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "@react-three/postprocessing": "^3.0.4",
+    "lucide-react": "^0.555.0",
+    "postprocessing": "^6.38.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.181.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
