@@ -152,49 +152,6 @@ const App: React.FC = () => {
     handleReturnToMenu();
   }, [handleReturnToMenu]);
 
-  // --- Android Hardware Back Button Handler ---
-  useEffect(() => {
-    const handleBackButton = (e: PopStateEvent) => {
-      e.preventDefault();
-
-      // If paused, resume game
-      if (paused) {
-        setPaused(false);
-        return;
-      }
-
-      // If game is running, pause it
-      if (gameStarted && !gameOver && !levelComplete) {
-        setPaused(true);
-        // Push state to prevent actual back navigation
-        window.history.pushState(null, '', window.location.href);
-        return;
-      }
-
-      // If on mission select, go back to title
-      if (!showTitleScreen && !gameStarted) {
-        setShowTitleScreen(true);
-        window.history.pushState(null, '', window.location.href);
-        return;
-      }
-
-      // If game over or level complete, return to menu
-      if (gameOver || levelComplete) {
-        handleReturnToMenu();
-        window.history.pushState(null, '', window.location.href);
-        return;
-      }
-    };
-
-    // Push initial state to enable back button interception
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handleBackButton);
-
-    return () => {
-      window.removeEventListener('popstate', handleBackButton);
-    };
-  }, [gameStarted, gameOver, levelComplete, paused, showTitleScreen, handleReturnToMenu]);
-
   return (
     <div className="fixed inset-0 bg-black overflow-hidden z-0">
       <AudioManager

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
-    "@capacitor/cli": "^7.4.4",
+    "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^7.4.4",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
