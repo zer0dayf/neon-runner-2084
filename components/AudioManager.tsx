@@ -8,128 +8,175 @@ interface AudioManagerProps {
   levelComplete?: boolean;
 }
 
-// React.memo ile sarmalıyoruz!
-// Bu sayede App.tsx'teki 'progress' değişse bile,
-// buradaki prop'lar (started, gameOver vb.) değişmediği sürece bu bileşen render edilmez.
+/**
+ * Web Audio API Implementation for Robust Performance
+ * 
+ * WHY WEB AUDIO?
+ * HTML5 <audio> on mobile WebViews is notoriously flaky:
+ * 1. It fails to loop gaplessly.
+ * 2. It can be reset by the OS/WebView during memory pressure or re-renders.
+ * 3. It relies on "streaming" which can hitch.
+ * 
+ * AudioContext loads the ENTIRE file into a memory buffer once, ensuring:
+ * 1. Perfect gapless looping.
+ * 2. Resilience to component re-renders.
+ * 3. Low latency.
+ */
+
+class WebAudioEngine {
+  private context: AudioContext | null = null;
+  private buffers: Map<string, AudioBuffer> = new Map();
+  private bgmSource: AudioBufferSourceNode | null = null;
+  private bgmGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
+  private isInitialized = false;
+
+  async init() {
+    if (this.isInitialized) return;
+    console.log("[WebAudio] Initializing Context");
+    this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    this.bgmGain = this.context.createGain();
+    this.bgmGain.connect(this.context.destination);
+
+    this.sfxGain = this.context.createGain();
+    this.sfxGain.connect(this.context.destination);
+
+    this.isInitialized = true;
+  }
+
+  async loadSound(name: string, url: string) {
+    if (this.buffers.has(name)) return;
+    try {
+      console.log(`[WebAudio] Loading: ${url}`);
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const decodedBuffer = await this.context!.decodeAudioData(arrayBuffer);
+      this.buffers.set(name, decodedBuffer);
+      console.log(`[WebAudio] Decoded: ${name}`);
+    } catch (e) {
+      console.error(`[WebAudio] Load failed for ${name}`, e);
+    }
+  }
+
+  playBGM(name: string, volume: number) {
+    if (!this.context || !this.buffers.has(name)) return;
+    this.stopBGM();
+
+    const source = this.context.createBufferSource();
+    source.buffer = this.buffers.get(name)!;
+    source.loop = true;
+
+    this.bgmGain!.gain.value = volume;
+    source.connect(this.bgmGain!);
+
+    source.start(0);
+    this.bgmSource = source;
+    console.log(`[WebAudio] BGM Playing: ${name}`);
+  }
+
+  stopBGM() {
+    if (this.bgmSource) {
+      try { this.bgmSource.stop(); } catch (e) { }
+      this.bgmSource.disconnect();
+      this.bgmSource = null;
+    }
+  }
+
+  setBGMVolume(val: number) {
+    if (this.bgmGain) this.bgmGain.gain.setTargetAtTime(val, this.context!.currentTime, 0.05);
+  }
+
+  setSFXVolume(val: number) {
+    if (this.sfxGain) this.sfxGain.gain.value = val;
+  }
+
+  playSFX(name: string) {
+    if (!this.context || !this.buffers.has(name)) return;
+    const source = this.context.createBufferSource();
+    source.buffer = this.buffers.get(name)!;
+    source.connect(this.sfxGain!);
+    source.start(0);
+  }
+
+  resume() {
+    if (this.context?.state === 'suspended') {
+      this.context.resume();
+    }
+  }
+
+  suspend() {
+    if (this.context?.state === 'running') {
+      this.context.suspend();
+    }
+  }
+}
+
+// Singleton Instance
+const engine = new WebAudioEngine();
+
 export const AudioManager = memo<AudioManagerProps>(({ url, started, muted, gameOver, levelComplete }) => {
-  const bgmRef = useRef<HTMLAudioElement | null>(null);
-  const crashRef = useRef<HTMLAudioElement | null>(null);
-  const winRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize Audio Objects
   useEffect(() => {
-    // Background Music
-    const bgm = new Audio(url);
-    bgm.preload = "auto";
-    bgm.loop = true;
-    bgm.volume = 0.4;
-    bgmRef.current = bgm;
-
-    // Crash SFX
-    const crash = new Audio('crash.mp3');
-    crash.preload = "auto";
-    crash.volume = 0.6;
-    crashRef.current = crash;
-
-    // Win SFX
-    const win = new Audio('win.mp3');
-    win.preload = "auto";
-    win.volume = 0.6;
-    winRef.current = win;
-
-    const errorHandler = (e: Event) => {
-        console.warn("Audio loading warning:", e);
+    const setup = async () => {
+      await engine.init();
+      await Promise.all([
+        engine.loadSound('bgm', url),
+        engine.loadSound('crash', 'crash.mp3'),
+        engine.loadSound('win', 'win.mp3')
+      ]);
     };
-    bgm.addEventListener('error', errorHandler);
+    setup();
 
-    // Initial Visibility Handler to prevent memory leaks
-    const handleVisibilityChange = () => {
-       if (document.hidden) {
-           bgmRef.current?.pause();
-       } else if (bgmRef.current && bgmRef.current.paused && started && !gameOver && !levelComplete) {
-           // Sadece oyun aktifse ve duraklatılmışsa devam ettir
-           bgmRef.current.play().catch(() => {});
-       }
+    const handleInteraction = () => {
+      engine.resume();
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('click', handleInteraction);
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('touchstart', handleInteraction);
+    document.addEventListener('click', handleInteraction);
 
     return () => {
-      bgm.removeEventListener('error', errorHandler);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      bgm.pause();
-      bgmRef.current = null;
-      crashRef.current = null;
-      winRef.current = null;
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('click', handleInteraction);
     };
-  }, [url]); // started/gameOver buraya eklenmez, sadece init
+  }, [url]);
 
-  // Handle Mute
+  // Handle Visibility
   useEffect(() => {
-    if (bgmRef.current) bgmRef.current.volume = muted ? 0 : 0.4;
-    if (crashRef.current) crashRef.current.volume = muted ? 0 : 0.6;
-    if (winRef.current) winRef.current.volume = muted ? 0 : 0.6;
-  }, [muted]);
+    const handleVisibilityChange = () => {
+      if (document.hidden) engine.suspend();
+      else engine.resume();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
-  // Game Over Logic (Play Crash)
+  // Sync Volume
   useEffect(() => {
-      if (gameOver && !muted && crashRef.current) {
-          bgmRef.current?.pause();
-          crashRef.current.currentTime = 0;
-          crashRef.current.play().catch(e => console.warn("Crash SFX failed", e));
-      }
+    const bgmVol = muted ? 0 : (levelComplete ? 0.08 : 0.4);
+    engine.setBGMVolume(bgmVol);
+    engine.setSFXVolume(muted ? 0 : 0.6);
+  }, [muted, levelComplete]);
+
+  // Sync State
+  useEffect(() => {
+    if (started && !gameOver) {
+      engine.resume();
+      engine.playBGM('bgm', muted ? 0 : 0.4);
+    } else {
+      engine.stopBGM();
+    }
+  }, [started, gameOver]);
+
+  // Handle SFX Triggers
+  useEffect(() => {
+    if (gameOver && !muted) engine.playSFX('crash');
   }, [gameOver, muted]);
 
-  // Level Complete Logic (Play Win)
   useEffect(() => {
-      if (levelComplete && !muted && winRef.current) {
-           // Lower BGM volume for win sound
-           if (bgmRef.current) bgmRef.current.volume = 0.1;
-           winRef.current.currentTime = 0;
-           winRef.current.play().catch(e => console.warn("Win SFX failed", e));
-      }
-
-      // FIX: Restore volume if levelComplete turns false (Reset/Next Level)
-      if (!levelComplete && bgmRef.current && !muted) {
-          bgmRef.current.volume = 0.4;
-      }
+    if (levelComplete && !muted) engine.playSFX('win');
   }, [levelComplete, muted]);
-
-  // Main BGM Loop Logic
-  useEffect(() => {
-    const bgm = bgmRef.current;
-    if (!bgm) return;
-
-    if (started && !gameOver && !levelComplete) {
-       // FORCE VOLUME RESET on Start
-       if (!muted) bgm.volume = 0.4;
-
-       // Zaten çalıyorsa dokunma (Takılmayı önler)
-       if (bgm.paused) {
-           const playPromise = bgm.play();
-           if (playPromise !== undefined) {
-               playPromise.catch((error) => {
-                   console.log("Autoplay prevented or interrupted", error);
-                   // Autoplay fallback (kullanıcı etkileşimi bekle)
-                   const forcePlay = () => {
-                       if (bgmRef.current) bgmRef.current.play().catch(() => {});
-                       document.removeEventListener('click', forcePlay);
-                       document.removeEventListener('touchstart', forcePlay);
-                   };
-                   document.addEventListener('click', forcePlay);
-                   document.addEventListener('touchstart', forcePlay);
-               });
-           }
-       }
-    } else {
-       // Oyun durduysa müziği durdur
-       if (!bgm.paused) {
-           bgm.pause();
-       }
-       if (gameOver) {
-          bgm.currentTime = 0;
-       }
-    }
-  }, [started, gameOver, muted, levelComplete]);
 
   return null;
 });

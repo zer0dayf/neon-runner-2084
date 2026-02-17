@@ -6,24 +6,22 @@ export const SKY_COLOR = '#050510'; // Deep Dark
 export const SUN_COLOR_TOP = '#ffcc00';
 export const SUN_COLOR_BOTTOM = '#ff0055';
 
-// Generate a Linear Track towards the Sun
+// Generate a Long Linear Track for Seamless Looping
 const points = [];
-const SEGMENTS = 2000; // OPTIMIZATION: Reduced from 3000 for 100Hz/120Hz mobile screens
-const START_Z = 400;
-const END_Z = -1000; // The Sun is here
+const SEGMENTS = 2000; // High segment count for smoothness
+const LENGTH = 2000; // Track length in units
 
 for (let i = 0; i <= SEGMENTS; i++) {
   const t = i / SEGMENTS; // 0 to 1
-  
-  // Linear interpolation for Z (Towards the sun)
-  const z = START_Z + (END_Z - START_Z) * t;
-  
-  // Winding Path (Sine waves on X)
-  // Frequency increases slightly towards the end for tension
-  const x = Math.sin(t * Math.PI * 6) * 60 * Math.sin(t * Math.PI);
-  
-  // Vertical Waviness
-  const y = Math.sin(t * Math.PI * 8) * 20 + Math.sin(t * Math.PI * 2) * 10;
+
+  // Linear Movement along Z (Moving forward)
+  const z = -t * LENGTH;
+
+  // Winding Path (X) - Using multiples of 2*PI for seamless tangents
+  const x = Math.sin(t * Math.PI * 4) * 50 * Math.sin(t * Math.PI * 2);
+
+  // Vertical Waviness (Y)
+  const y = Math.sin(t * Math.PI * 6) * 15 + Math.sin(t * Math.PI * 2) * 5;
 
   points.push(new Vector3(x, y, z));
 }

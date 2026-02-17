@@ -12,6 +12,7 @@ interface UIOverlayProps {
     score: number;
     highScore: number;
     progress: number;
+    bestProgress: number;
     isSwipeControl: boolean;
     muted: boolean;
     paused: boolean;
@@ -28,7 +29,7 @@ interface UIOverlayProps {
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
-    showTitleScreen, started, gameOver, levelComplete, level, maxUnlockedLevel, isInfinite, score, highScore, progress, isSwipeControl,
+    showTitleScreen, started, gameOver, levelComplete, level, maxUnlockedLevel, isInfinite, score, highScore, progress, bestProgress, isSwipeControl,
     muted, paused,
     onToggleMute, onStartSystem, onBackToTitle, onSelectLevel, onSelectInfinite, onRestart, onReturnToMenu, onTogglePause, onQuit, onToggleControl
 }) => {
@@ -49,11 +50,25 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {/* --- PROGRESS BAR --- */}
             {started && !gameOver && !levelComplete && !isInfinite && (
-                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 w-48 md:w-96 h-3 bg-gray-900/60 border border-white/20 rounded-full z-[25] overflow-hidden backdrop-blur-sm pointer-events-none">
-                    <div
-                        className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(0,255,255,0.6)]"
-                        style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
-                    />
+                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 w-48 md:w-96 h-3 bg-gray-900/60 border border-white/20 rounded-full z-[25] backdrop-blur-sm pointer-events-none">
+                    {/* Background track (now inside for clipping control) */}
+                    <div className="absolute inset-0 overflow-hidden rounded-full">
+                        {/* Current Progress bar */}
+                        <div
+                            className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(0,255,255,0.6)]"
+                            style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
+                        />
+                    </div>
+
+                    {/* Best Progress Marker (Vertical Line) */}
+                    {bestProgress > 0 && (
+                        <div
+                            className="absolute top-1/2 -translate-y-1/2 w-[2px] h-[140%] bg-pink-500 shadow-[0_0_8px_#ff007f] z-[30] transition-all duration-300"
+                            style={{ left: `${bestProgress}%` }}
+                        >
+                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-pink-400 tracking-tighter uppercase whitespace-nowrap">BEST</div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -100,18 +115,18 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {/* TITLE SCREEN */}
             {showTitleScreen && (
-                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-black/90">
-                    <div className="text-center relative px-4">
-                        <h1 className="text-5xl md:text-9xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 mb-2"
+                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-black/90 p-4">
+                    <div className="text-center relative px-8 max-h-screen overflow-y-auto py-8">
+                        <h1 className="text-5xl md:text-9xl landscape:text-6xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 mb-2 landscape:mb-0 pr-4"
                             style={{ filter: "drop-shadow(0 0 20px rgba(0,255,255,0.4))", fontFamily: "'Rajdhani', sans-serif" }}>
                             NEON RUNNER
                         </h1>
-                        <p className="text-pink-500 tracking-[0.5em] md:tracking-[0.8em] text-sm md:text-xl font-bold mb-12">PROJECT 2084</p>
+                        <p className="text-pink-500 tracking-[0.5em] md:tracking-[0.8em] text-sm md:text-xl font-bold mb-12 landscape:mb-4">PROJECT 2084</p>
 
-                        <div className="flex flex-col gap-6 items-center">
+                        <div className="flex flex-col gap-6 landscape:gap-3 items-center">
                             <button
                                 onClick={onStartSystem}
-                                className="group relative w-64 py-4 bg-transparent border-2 border-cyan-500 text-cyan-400 font-bold tracking-widest uppercase text-xl hover:bg-cyan-500 hover:text-black transition-all duration-300"
+                                className="group relative w-64 py-4 landscape:py-2 bg-transparent border-2 border-cyan-500 text-cyan-400 font-bold tracking-widest uppercase text-xl hover:bg-cyan-500 hover:text-black transition-all duration-300 flex items-center justify-center"
                             >
                                 <span className="absolute inset-0 bg-cyan-400 opacity-0 group-hover:opacity-20 blur-lg transition-opacity"></span>
                                 <Play className="inline mb-1 mr-2" size={24} fill="currentColor" />
@@ -124,21 +139,23 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {/* PAUSE MENU MODAL */}
             {!showTitleScreen && paused && (
-                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-black/70 backdrop-blur-md">
-                    <div className="text-center relative p-10 bg-black/80 border border-cyan-500 rounded-lg shadow-[0_0_50px_rgba(0,255,255,0.2)]">
-                        <h2 className="text-4xl md:text-5xl font-bold text-cyan-400 mb-8 tracking-widest font-mono">PAUSED</h2>
-                        <div className="flex flex-col gap-4 w-64">
+                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-black/70 backdrop-blur-md p-4">
+                    <div className="text-center relative p-6 md:p-10 bg-black/80 border border-cyan-500 rounded-lg shadow-[0_0_50px_rgba(0,255,255,0.2)] flex flex-col landscape:flex-row gap-8 items-center max-h-[90vh] overflow-y-auto">
+                        <div>
+                            <h2 className="text-4xl md:text-5xl font-bold text-cyan-400 mb-2 landscape:mb-0 tracking-widest font-mono">PAUSED</h2>
+                        </div>
+
+                        <div className="flex flex-col gap-4 w-64 landscape:w-48">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onTogglePause(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 bg-cyan-600/20 border border-cyan-500 text-cyan-300 font-bold tracking-wider hover:bg-cyan-500 hover:text-black transition-all"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-cyan-600/20 border border-cyan-500 text-cyan-300 font-bold tracking-wider hover:bg-cyan-500 hover:text-black transition-all flex items-center justify-center"
                             >
                                 <Play className="inline mr-2" size={20} /> RESUME
                             </button>
 
-                            {/* CONTROL TOGGLE */}
                             <button
                                 onClick={(e) => { e.stopPropagation(); onToggleControl(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 bg-transparent border border-yellow-500 text-yellow-400 font-bold tracking-wider hover:bg-yellow-500/20 transition-all flex items-center justify-center gap-2"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-yellow-500 text-yellow-400 font-bold tracking-wider hover:bg-yellow-500/20 transition-all flex items-center justify-center gap-2"
                             >
                                 {isSwipeControl ? <Hand size={20} /> : <MousePointerClick size={20} />}
                                 {isSwipeControl ? "MODE: SWIPE" : "MODE: TAP"}
@@ -146,13 +163,13 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
                             <button
                                 onClick={(e) => { e.stopPropagation(); onRestart(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 bg-transparent border border-white/50 text-white font-bold tracking-wider hover:bg-white hover:text-black transition-all"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-white/50 text-white font-bold tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center"
                             >
                                 <RotateCcw className="inline mr-2" size={20} /> RESTART
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onQuit(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider hover:bg-red-950 transition-all"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider hover:bg-red-950 transition-all flex items-center justify-center"
                             >
                                 <LogOut className="inline mr-2" size={20} /> QUIT
                             </button>
@@ -194,72 +211,83 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             )}
 
             {!showTitleScreen && !started && !gameOver && !levelComplete && (
-                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-black/80 backdrop-blur-lg overflow-hidden">
-                    <div className="w-full max-w-4xl p-4 md:p-8 relative flex flex-col max-h-[100dvh] overflow-y-auto scrollbar-thin">
-                        <h2 className="text-center text-4xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 mb-6 md:mb-8 mt-12 md:mt-0" style={{ filter: "drop-shadow(0px 0px 10px rgba(0,255,255,0.3))" }}>MISSION SELECT</h2>
+                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-black/80 backdrop-blur-lg">
+                    <div className="w-full h-full max-w-7xl p-4 md:p-8 relative flex flex-col landscape:flex-row gap-4 landscape:gap-8 overflow-y-auto pt-12 landscape:pt-4">
 
-                        <div className="mb-4 md:mb-6">
-                            <button onClick={(e) => { e.stopPropagation(); onSelectInfinite(); }} className="w-full relative p-4 md:p-6 border-2 border-yellow-500/50 bg-yellow-950/20 hover:bg-yellow-900/40 hover:border-yellow-400 transition-all duration-300 group overflow-hidden cursor-pointer pointer-events-auto flex flex-col justify-center">
+                        {/* LEFT COLUMN (Landscape) / TOP (Portrait) */}
+                        <div className="flex flex-col landscape:w-1/3 gap-4 landscape:gap-2 landscape:justify-center shrink-0">
+                            <h2 className="text-center landscape:text-left text-4xl md:text-6xl landscape:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 mt-0" style={{ filter: "drop-shadow(0px 0px 10px rgba(0,255,255,0.3))" }}>
+                                MISSION<br className="hidden landscape:block" /> SELECT
+                            </h2>
+
+                            <button onClick={(e) => { e.stopPropagation(); onSelectInfinite(); }} className="w-full relative p-4 border-2 border-yellow-500/50 bg-yellow-950/20 hover:bg-yellow-900/40 hover:border-yellow-400 transition-all duration-300 group overflow-hidden cursor-pointer pointer-events-auto flex flex-col justify-center">
                                 <div className="flex items-center justify-between relative z-10 w-full">
                                     <div className="text-left">
-                                        <h3 className="text-xl md:text-2xl font-bold text-yellow-400 mb-1 flex items-center gap-2"><Infinity size={24} /> INFINITE RUN</h3>
-                                        <p className="text-xs font-mono text-yellow-600 uppercase">Endless Challenge</p>
+                                        <h3 className="text-xl font-bold text-yellow-400 mb-1 flex items-center gap-2"><Infinity size={24} /> INFINITE</h3>
+                                        <p className="text-xs font-mono text-yellow-600 uppercase">Endless Run</p>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-xs font-mono text-yellow-600 uppercase tracking-widest">HIGH SCORE</div>
-                                        <div className="text-xl md:text-2xl font-bold text-white font-mono">{highScore}</div>
+                                        <div className="text-xs font-mono text-yellow-600 uppercase tracking-widest">HI-SCORE</div>
+                                        <div className="text-xl font-bold text-white font-mono">{highScore}</div>
                                     </div>
                                 </div>
                             </button>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-8 flex-1 md:flex-none overflow-y-auto md:overflow-visible">
-                            {STAGES.map((stage) => {
-                                const isLocked = stage.id > maxUnlockedLevel;
-                                const isCompleted = stage.id < maxUnlockedLevel;
-                                return (
-                                    <button key={stage.id} disabled={isLocked} onClick={(e) => { e.stopPropagation(); onSelectLevel(stage.id); }} className={`relative p-3 md:p-4 border-2 transition-all duration-300 text-left group overflow-hidden cursor-pointer pointer-events-auto flex-shrink-0 flex flex-col justify-center h-full min-h-[100px] ${isLocked ? 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed' : 'border-cyan-500/30 bg-cyan-950/30 hover:border-cyan-400 hover:bg-cyan-900/50'}`}>
-                                        {!isLocked && (<div className="absolute inset-0 bg-cyan-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />)}
-                                        <div className="flex justify-between items-start mb-1 relative z-10 w-full">
-                                            <span className={`text-xs font-mono tracking-widest ${isLocked ? 'text-gray-600' : 'text-cyan-400'}`}>STAGE 0{stage.id}</span>
-                                            {isLocked && <Lock size={14} />}
-                                            {isCompleted && <CheckCircle size={14} className="text-green-400" />}
-                                        </div>
-                                        <h3 className={`text-lg md:text-xl font-bold mb-1 leading-tight ${isLocked ? 'text-gray-500' : 'text-white group-hover:text-cyan-300'}`}>{stage.name}</h3>
-                                        <p className="text-xs font-mono text-gray-500 uppercase leading-tight truncate">{isLocked ? 'LOCKED' : stage.desc}</p>
-                                        {!isLocked && (<div className="mt-2 w-full h-1 bg-gray-800 rounded-full overflow-hidden"><div className="h-full bg-cyan-500 w-0 group-hover:w-full transition-all duration-700 ease-out" /></div>)}
-                                    </button>
-                                )
-                            })}
-                        </div>
-
-                        <div className="flex justify-center pb-8 md:pb-0">
-                            <button onClick={(e) => { e.stopPropagation(); onBackToTitle(); }} className="cursor-pointer pointer-events-auto px-8 py-3 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider uppercase hover:bg-red-950/50 transition-all flex items-center gap-2">
-                                <ArrowLeft size={20} /> BACK TO TITLE
+                            <button onClick={(e) => { e.stopPropagation(); onBackToTitle(); }} className="cursor-pointer pointer-events-auto px-6 py-3 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider uppercase hover:bg-red-950/50 transition-all flex items-center justify-center gap-2 mt-auto landscape:mt-0">
+                                <ArrowLeft size={20} /> BACK
                             </button>
                         </div>
+
+                        {/* RIGHT COLUMN (Landscape) / BOTTOM (Portrait) */}
+                        <div className="flex-1 overflow-y-auto pr-2 landscape:h-full landscape:overflow-visible flex flex-col justify-center">
+                            <div className="grid grid-cols-1 md:grid-cols-2 landscape:grid-cols-3 gap-3">
+                                {STAGES.map((stage) => {
+                                    const isLocked = stage.id > maxUnlockedLevel;
+                                    const isCompleted = stage.id < maxUnlockedLevel;
+                                    return (
+                                        <button key={stage.id} disabled={isLocked} onClick={(e) => { e.stopPropagation(); onSelectLevel(stage.id); }} className={`relative p-3 border-2 transition-all duration-300 text-left group overflow-hidden cursor-pointer pointer-events-auto flex-shrink-0 flex flex-col justify-center min-h-[90px] ${isLocked ? 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed' : 'border-cyan-500/30 bg-cyan-950/30 hover:border-cyan-400 hover:bg-cyan-900/50'}`}>
+                                            {!isLocked && (<div className="absolute inset-0 bg-cyan-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />)}
+                                            <div className="flex justify-between items-start mb-1 relative z-10 w-full">
+                                                <span className={`text-xs font-mono tracking-widest ${isLocked ? 'text-gray-600' : 'text-cyan-400'}`}>STAGE 0{stage.id}</span>
+                                                {isLocked && <Lock size={14} />}
+                                                {isCompleted && <CheckCircle size={14} className="text-green-400" />}
+                                            </div>
+                                            <h3 className={`text-lg font-bold mb-0.5 leading-tight ${isLocked ? 'text-gray-500' : 'text-white group-hover:text-cyan-300'}`}>{stage.name}</h3>
+                                            <p className="text-[10px] font-mono text-gray-500 uppercase leading-tight truncate">{isLocked ? 'LOCKED' : stage.desc}</p>
+                                            {!isLocked && (<div className="mt-2 w-full h-1 bg-gray-800 rounded-full overflow-hidden"><div className="h-full bg-cyan-500 w-0 group-hover:w-full transition-all duration-700 ease-out" /></div>)}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             )}
 
             {!showTitleScreen && gameOver && (
-                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-red-950/70 backdrop-blur-md">
-                    <div className="text-center relative p-6 md:p-10 bg-black/90 border-2 border-red-500 rounded-lg shadow-[0_0_50px_rgba(255,0,0,0.4)] mx-4">
-                        <div className="absolute inset-0 bg-red-500 blur-3xl opacity-10 rounded-full"></div>
-                        <h2 className="text-4xl md:text-7xl font-black text-red-500 mb-2 glitch-effect" style={{ textShadow: "4px 4px 0px #000" }}>CRITICAL FAILURE</h2>
-                        <p className="text-red-300 tracking-[0.5em] mb-6 font-mono text-sm md:text-base">SIGNAL LOST</p>
+                <div className="absolute inset-0 flex items-center justify-center z-[999] pointer-events-auto bg-red-950/70 backdrop-blur-md p-4">
+                    <div className="text-center relative p-4 md:p-8 bg-black/90 border-2 border-red-500 rounded-lg shadow-[0_0_40px_rgba(255,0,0,0.4)] max-w-lg w-full overflow-hidden">
+                        <div className="absolute inset-0 bg-red-500 blur-3xl opacity-5 rounded-full pointer-events-none"></div>
+
+                        <h2 className="text-3xl md:text-6xl landscape:text-3xl font-black text-red-500 mb-1 lg:mb-2 glitch-effect" style={{ textShadow: "3px 3px 0px #000" }}>CRITICAL FAILURE</h2>
+                        <p className="text-red-300 tracking-[0.4em] mb-3 landscape:mb-1 font-mono text-xs md:text-sm">SIGNAL LOST</p>
 
                         {isInfinite && (
-                            <div className="mb-6 p-4 bg-red-950/50 border border-red-800">
-                                <div className="text-xs text-red-400 tracking-widest uppercase mb-1">Session Score</div>
-                                <div className="text-3xl md:text-4xl font-bold text-white font-mono">{score}</div>
-                                {score >= highScore && score > 0 && (<div className="text-yellow-400 text-xs font-bold mt-2 animate-pulse">NEW HIGH SCORE!</div>)}
+                            <div className="mb-4 landscape:mb-2 p-3 landscape:p-1.5 bg-red-950/50 border border-red-900/50">
+                                <div className="text-[10px] text-red-400 tracking-widest uppercase">Score</div>
+                                <div className="text-2xl md:text-4xl landscape:text-xl font-bold text-white font-mono">{score}</div>
+                                {score >= highScore && score > 0 && (<div className="text-yellow-400 text-[10px] font-bold mt-1">NEW HIGH SCORE!</div>)}
                             </div>
                         )}
 
-                        <div className="flex flex-col md:flex-row gap-4 justify-center relative z-50">
-                            <button onClick={(e) => { e.stopPropagation(); onReturnToMenu(); }} className="cursor-pointer pointer-events-auto px-8 py-3 bg-transparent border-2 border-red-800 text-red-500 font-bold tracking-wider uppercase hover:bg-red-950 hover:text-white transition-all duration-300"><Menu className="inline mr-2" size={20} /> ABORT</button>
-                            <button onClick={(e) => { e.stopPropagation(); onRestart(); }} className="cursor-pointer pointer-events-auto px-8 py-3 bg-red-600 border-2 border-red-600 text-black font-bold tracking-wider uppercase hover:bg-red-500 hover:scale-105 transition-all duration-150 shadow-[0_0_20px_rgba(255,0,0,0.5)]"><RotateCcw className="inline mr-2" size={20} /> RETRY</button>
+                        <div className="flex flex-col md:flex-row gap-3 landscape:gap-4 justify-center relative z-50">
+                            <button onClick={(e) => { e.stopPropagation(); onReturnToMenu(); }} className="cursor-pointer pointer-events-auto px-6 py-2.5 landscape:py-1.5 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider uppercase hover:bg-red-950 transition-all flex items-center justify-center whitespace-nowrap">
+                                <Menu className="inline mr-2" size={18} /> ABORT
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); onRestart(); }} className="cursor-pointer pointer-events-auto px-6 py-2.5 landscape:py-1.5 bg-red-600 border border-red-600 text-black font-bold tracking-wider uppercase hover:bg-red-500 transition-all shadow-[0_0_15px_rgba(255,0,0,0.5)] flex items-center justify-center whitespace-nowrap">
+                                <RotateCcw className="inline mr-2" size={18} /> RETRY
+                            </button>
                         </div>
                     </div>
                 </div>

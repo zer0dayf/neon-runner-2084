@@ -20,8 +20,8 @@ interface GameSceneProps {
 }
 
 export const GameScene: React.FC<GameSceneProps> = ({
-    gameStarted, isGameOver, level, isInfinite, paused, isSwipeControl,
-    onGameOver, onLevelComplete, onScoreUpdate, onProgressUpdate
+  gameStarted, isGameOver, level, isInfinite, paused, isSwipeControl,
+  onGameOver, onLevelComplete, onScoreUpdate, onProgressUpdate
 }) => {
   return (
     <>
@@ -35,19 +35,19 @@ export const GameScene: React.FC<GameSceneProps> = ({
 
       <Suspense fallback={null}>
         <Track
-            gameStarted={gameStarted}
-            isGameOver={isGameOver}
-            level={level}
-            isInfinite={isInfinite}
-            paused={paused}
-            isSwipeControl={isSwipeControl} // --- Gönderildi
-            onGameOver={onGameOver}
-            onLevelComplete={onLevelComplete}
-            onScoreUpdate={onScoreUpdate}
-            onProgressUpdate={onProgressUpdate}
+          gameStarted={gameStarted}
+          isGameOver={isGameOver}
+          level={level}
+          isInfinite={isInfinite}
+          paused={paused}
+          isSwipeControl={isSwipeControl} // --- Gönderildi
+          onGameOver={onGameOver}
+          onLevelComplete={onLevelComplete}
+          onScoreUpdate={onScoreUpdate}
+          onProgressUpdate={onProgressUpdate}
         />
 
-        {!isInfinite && <SynthwaveSun />}
+        <SynthwaveSun isInfinite={isInfinite} />
 
         <NeonGrid />
         <RetroArtifacts />

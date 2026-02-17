@@ -24,28 +24,37 @@ const App: React.FC = () => {
 
   // Lazy Initialize from LocalStorage
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(() => {
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('neon_runner_max_level');
-          return saved ? parseInt(saved, 10) : 1;
-      }
-      return 1;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_max_level');
+      return saved ? parseInt(saved, 10) : 1;
+    }
+    return 1;
   });
 
   // Infinite Mode Stats
   const [isInfiniteMode, setIsInfiniteMode] = useState(false);
   const [score, setScore] = useState(0);
 
+  // --- YENİ: Best Progress Tracker ---
+  const [bestProgressPerLevel, setBestProgressPerLevel] = useState<Record<number, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_best_progress');
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
+
   // Lazy Initialize High Score
   const [highScore, setHighScore] = useState(() => {
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('neon_runner_highscore');
-          return saved ? parseInt(saved, 10) : 0;
-      }
-      return 0;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_highscore');
+      return saved ? parseInt(saved, 10) : 0;
+    }
+    return 0;
   });
 
   const toggleMute = useCallback(() => {
-      setMuted(prev => !prev);
+    setMuted(prev => !prev);
   }, []);
 
   const handleStartSystem = useCallback(() => {
@@ -82,50 +91,62 @@ const App: React.FC = () => {
     setResetKey(prev => prev + 1);
     setGameStarted(true);
   }, []);
-
   const handleProgressUpdate = useCallback((newProgress: number) => {
-      setProgress(newProgress);
-  }, []);
+    setProgress(newProgress);
+
+    // Update best progress if not in infinite mode
+    if (!isInfiniteMode) {
+      setBestProgressPerLevel(prev => {
+        const currentBest = prev[level] || 0;
+        if (newProgress > currentBest) {
+          const updated = { ...prev, [level]: newProgress };
+          localStorage.setItem('neon_runner_best_progress', JSON.stringify(updated));
+          return updated;
+        }
+        return prev;
+      });
+    }
+  }, [isInfiniteMode, level]);
 
   const handleToggleControl = useCallback(() => {
-      setIsSwipeControl(prev => !prev);
+    setIsSwipeControl(prev => !prev);
   }, []);
 
   const handleGameOver = useCallback(() => {
     setGameOver((prev) => {
-        if (prev) return prev;
+      if (prev) return prev;
 
-        if (isInfiniteMode) {
-            setHighScore(curr => {
-                const newHigh = Math.max(curr, score);
-                localStorage.setItem('neon_runner_highscore', newHigh.toString());
-                return newHigh;
-            });
-        }
-        return true;
+      if (isInfiniteMode) {
+        setHighScore(curr => {
+          const newHigh = Math.max(curr, score);
+          localStorage.setItem('neon_runner_highscore', newHigh.toString());
+          return newHigh;
+        });
+      }
+      return true;
     });
   }, [isInfiniteMode, score]);
 
   const handleLevelComplete = useCallback(() => {
-     if (isInfiniteMode) return;
+    if (isInfiniteMode) return;
 
-     setLevelComplete(true);
-     setGameStarted(false);
+    setLevelComplete(true);
+    setGameStarted(false);
 
-     setMaxUnlockedLevel(prev => {
-         const next = Math.max(prev, level + 1);
-         localStorage.setItem('neon_runner_max_level', next.toString());
-         return next;
-     });
+    setMaxUnlockedLevel(prev => {
+      const next = Math.max(prev, level + 1);
+      localStorage.setItem('neon_runner_max_level', next.toString());
+      return next;
+    });
   }, [level, isInfiniteMode]);
 
   const handleReturnToMenu = useCallback(() => {
-      setGameStarted(false);
-      setGameOver(false);
-      setLevelComplete(false);
-      setIsInfiniteMode(false);
-      setPaused(false);
-      setProgress(0);
+    setGameStarted(false);
+    setGameOver(false);
+    setLevelComplete(false);
+    setIsInfiniteMode(false);
+    setPaused(false);
+    setProgress(0);
   }, []);
 
   const handleRestart = useCallback(() => {
@@ -139,7 +160,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleScoreUpdate = useCallback((newScore: number) => {
-      setScore(newScore);
+    setScore(newScore);
   }, []);
 
   const handleTogglePause = useCallback(() => {
@@ -155,11 +176,11 @@ const App: React.FC = () => {
   return (
     <div className="fixed inset-0 bg-black overflow-hidden z-0">
       <AudioManager
-          url="soundtrack.mp3"
-          started={!showTitleScreen}
-          muted={muted}
-          gameOver={gameOver}
-          levelComplete={levelComplete}
+        url="soundtrack.mp3"
+        started={!showTitleScreen}
+        muted={muted}
+        gameOver={gameOver}
+        levelComplete={levelComplete}
       />
 
       <Canvas
@@ -208,6 +229,7 @@ const App: React.FC = () => {
         score={score}
         highScore={highScore}
         progress={progress}
+        bestProgress={bestProgressPerLevel[level] || 0}
         isSwipeControl={isSwipeControl} // --- Gönderildi
         onToggleControl={handleToggleControl} // --- Gönderildi
         muted={muted}
