@@ -35,6 +35,15 @@ const App: React.FC = () => {
   const [isInfiniteMode, setIsInfiniteMode] = useState(false);
   const [score, setScore] = useState(0);
 
+  // --- YENİ: Best Progress Tracker ---
+  const [bestProgressPerLevel, setBestProgressPerLevel] = useState<Record<number, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_best_progress');
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
+
   // Lazy Initialize High Score
   const [highScore, setHighScore] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -82,10 +91,22 @@ const App: React.FC = () => {
     setResetKey(prev => prev + 1);
     setGameStarted(true);
   }, []);
-
   const handleProgressUpdate = useCallback((newProgress: number) => {
     setProgress(newProgress);
-  }, []);
+
+    // Update best progress if not in infinite mode
+    if (!isInfiniteMode) {
+      setBestProgressPerLevel(prev => {
+        const currentBest = prev[level] || 0;
+        if (newProgress > currentBest) {
+          const updated = { ...prev, [level]: newProgress };
+          localStorage.setItem('neon_runner_best_progress', JSON.stringify(updated));
+          return updated;
+        }
+        return prev;
+      });
+    }
+  }, [isInfiniteMode, level]);
 
   const handleToggleControl = useCallback(() => {
     setIsSwipeControl(prev => !prev);
@@ -208,6 +229,7 @@ const App: React.FC = () => {
         score={score}
         highScore={highScore}
         progress={progress}
+        bestProgress={bestProgressPerLevel[level] || 0}
         isSwipeControl={isSwipeControl} // --- Gönderildi
         onToggleControl={handleToggleControl} // --- Gönderildi
         muted={muted}

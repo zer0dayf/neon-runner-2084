@@ -12,6 +12,7 @@ interface UIOverlayProps {
     score: number;
     highScore: number;
     progress: number;
+    bestProgress: number;
     isSwipeControl: boolean;
     muted: boolean;
     paused: boolean;
@@ -28,7 +29,7 @@ interface UIOverlayProps {
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
-    showTitleScreen, started, gameOver, levelComplete, level, maxUnlockedLevel, isInfinite, score, highScore, progress, isSwipeControl,
+    showTitleScreen, started, gameOver, levelComplete, level, maxUnlockedLevel, isInfinite, score, highScore, progress, bestProgress, isSwipeControl,
     muted, paused,
     onToggleMute, onStartSystem, onBackToTitle, onSelectLevel, onSelectInfinite, onRestart, onReturnToMenu, onTogglePause, onQuit, onToggleControl
 }) => {
@@ -49,11 +50,25 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {/* --- PROGRESS BAR --- */}
             {started && !gameOver && !levelComplete && !isInfinite && (
-                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 w-48 md:w-96 h-3 bg-gray-900/60 border border-white/20 rounded-full z-[25] overflow-hidden backdrop-blur-sm pointer-events-none">
-                    <div
-                        className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(0,255,255,0.6)]"
-                        style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
-                    />
+                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 w-48 md:w-96 h-3 bg-gray-900/60 border border-white/20 rounded-full z-[25] backdrop-blur-sm pointer-events-none">
+                    {/* Background track (now inside for clipping control) */}
+                    <div className="absolute inset-0 overflow-hidden rounded-full">
+                        {/* Current Progress bar */}
+                        <div
+                            className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(0,255,255,0.6)]"
+                            style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
+                        />
+                    </div>
+
+                    {/* Best Progress Marker (Vertical Line) */}
+                    {bestProgress > 0 && (
+                        <div
+                            className="absolute top-1/2 -translate-y-1/2 w-[2px] h-[140%] bg-pink-500 shadow-[0_0_8px_#ff007f] z-[30] transition-all duration-300"
+                            style={{ left: `${bestProgress}%` }}
+                        >
+                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-pink-400 tracking-tighter uppercase whitespace-nowrap">BEST</div>
+                        </div>
+                    )}
                 </div>
             )}
 
