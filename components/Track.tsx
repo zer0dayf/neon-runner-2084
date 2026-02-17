@@ -29,6 +29,78 @@ interface TrackProps {
   onProgressUpdate: (progress: number) => void;
 }
 
+// --- Optimization: Shared Geometries and Materials ---
+const RING_GEOM = new THREE.TorusGeometry(TUBE_RADIUS + 0.5, 0.1, 8, 32);
+const RING_MAT = new THREE.MeshBasicMaterial({ color: "#00ffff", transparent: true, opacity: 0.2, depthWrite: false });
+
+const BLOCK_GEOM = new THREE.BoxGeometry(2, 2, 2);
+const BLOCK_WIRE_GEOM = new THREE.BoxGeometry(2.2, 2.2, 2.2);
+const BLOCK_MAT = new THREE.MeshBasicMaterial({ color: "#ff0044", toneMapped: false });
+const BLOCK_WIRE_MAT = new THREE.MeshBasicMaterial({ color: "#ff0044", wireframe: true });
+
+const OBSTACLE_RING_MAT = new THREE.MeshBasicMaterial({ color: "#ffaa00", toneMapped: false });
+const SPINNER_GEOM = new THREE.CylinderGeometry(0.4, 0.4, TUBE_RADIUS * 1.95, 8);
+const SPINNER_MAT = new THREE.MeshBasicMaterial({ color: "#d400ff", toneMapped: false });
+
+const DOUBLE_SPINNER_MAT_A = new THREE.MeshBasicMaterial({ color: "#ff0000", toneMapped: false });
+const DOUBLE_SPINNER_MAT_B = new THREE.MeshBasicMaterial({ color: "#00ffff", toneMapped: false });
+
+// --- Instanced Component for Decorative Rings ---
+const InstancedRings: React.FC<{ isInfinite: boolean, progress: number }> = memo(({ isInfinite, progress }) => {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+
+  const { matrices, count } = useMemo(() => {
+    const tempMatrix = new THREE.Matrix4();
+    const tempQuat = new THREE.Quaternion();
+
+    const primaryCount = 120;
+    const forwardCount = isInfinite ? 60 : 0;
+    const backwardCount = (isInfinite && progress < 0.3) ? 40 : 0;
+    const totalCount = primaryCount + forwardCount + backwardCount;
+
+    const mats = new Float32Array(totalCount * 16);
+    let idx = 0;
+
+    const setMatrix = (pt: THREE.Vector3, tan: THREE.Vector3) => {
+      tempMatrix.lookAt(pt, pt.clone().add(tan), new Vector3(0, 1, 0));
+      tempQuat.setFromRotationMatrix(tempMatrix);
+      tempMatrix.compose(pt, tempQuat, new Vector3(1, 1, 1));
+      tempMatrix.toArray(mats, idx * 16);
+      idx++;
+    };
+
+    for (let i = 0; i < 120; i++) {
+      const t = i / 120;
+      setMatrix(TRACK_CURVE.getPointAt(t), TRACK_CURVE.getTangentAt(t));
+    }
+    if (isInfinite) {
+      for (let i = 0; i < 60; i++) {
+        const t = i / 120;
+        const pt = TRACK_CURVE.getPointAt(t).clone().add(new Vector3(0, 0, -2000));
+        setMatrix(pt, TRACK_CURVE.getTangentAt(t));
+      }
+      if (progress < 0.3) {
+        for (let i = 0; i < 40; i++) {
+          const t = 1.0 - (i / 120);
+          const pt = TRACK_CURVE.getPointAt(t).clone().add(new Vector3(0, 0, 2000));
+          setMatrix(pt, TRACK_CURVE.getTangentAt(t));
+        }
+      }
+    }
+
+    return { matrices: mats, count: idx };
+  }, [isInfinite, progress < 0.3]);
+
+  useEffect(() => {
+    if (meshRef.current) {
+      meshRef.current.instanceMatrix.set(matrices);
+      meshRef.current.instanceMatrix.needsUpdate = true;
+    }
+  }, [matrices]);
+
+  return <instancedMesh ref={meshRef} args={[RING_GEOM, RING_MAT, count]} />;
+});
+
 // --- Obstacle Component ---
 const ObstacleMesh: React.FC<{
   data: ObstacleData;
@@ -37,97 +109,66 @@ const ObstacleMesh: React.FC<{
   trackBinormal: Vector3;
   trackNormal: Vector3;
   playerProgressRef: React.MutableRefObject<number>;
-  gameTimeRef: React.MutableRefObject<number>; // Shared game time
+  gameTimeRef: React.MutableRefObject<number>;
   isGhost?: boolean;
-}> = ({ data, trackPoint, trackTangent, trackBinormal, trackNormal, playerProgressRef, gameTimeRef, isGhost }) => {
+}> = ({ data, trackPoint, trackTangent, trackNormal, playerProgressRef, gameTimeRef, isGhost }) => {
 
   const groupRef = useRef<THREE.Group>(null);
-  const spinnerRef = useRef<THREE.Group>(null); // Ref for rotating parts
+  const spinnerRef = useRef<THREE.Group>(null);
 
-  useFrame((state, delta) => {
-    // Visibility culling
+  useFrame(() => {
     if (groupRef.current) {
-      // If it's a ghost (at the end of track), we want it visible when player is near the end (t > 0.8)
-      // If it's normal, we want it visible when player is near (dist < 0.15)
       let isVisible = true;
-
       if (!isGhost) {
         let dist = Math.abs(data.t - playerProgressRef.current);
-        // Special case: if player is near end (0.95) and obstacle is near start (0.05), it should be visible? 
-        // No, that's handled by the Ghost instance now.
-        isVisible = dist < 0.15; // Increased range slightly
+        isVisible = dist < 0.15;
       } else {
-        // Ghost is at Z-2000 (effectively t=1.0 + data.t).
-        // Player is at t=0.8...1.0. 
-        // So distance is (1.0 + data.t) - playerProgressRef.current
-        // We just keep ghosts visible if player is past 0.7
         isVisible = playerProgressRef.current > 0.7;
       }
-
       if (groupRef.current.visible !== isVisible) {
         groupRef.current.visible = isVisible;
       }
     }
 
-    // Rotation sync (Visual)
     if (spinnerRef.current && (data.type === 'spinner' || data.type === 'double-spinner')) {
       const currentRot = gameTimeRef.current * (data.rotationSpeed || 1);
       spinnerRef.current.rotation.z = data.angle + currentRot;
     }
   });
 
-  const getPositionAndQuat = (angle: number) => {
-    const centerPos = trackPoint.clone();
-    const matrix = new THREE.Matrix4().lookAt(centerPos, centerPos.clone().add(trackTangent), trackNormal);
-    const quat = new THREE.Quaternion().setFromRotationMatrix(matrix);
-    return { centerPos, quat };
-  };
-
-  const { centerPos, quat } = useMemo(() => getPositionAndQuat(data.angle), [data.angle, trackPoint, trackTangent, trackNormal]);
+  const { centerPos, quat } = useMemo(() => {
+    const cp = trackPoint.clone();
+    const matrix = new THREE.Matrix4().lookAt(cp, cp.clone().add(trackTangent), trackNormal);
+    const q = new THREE.Quaternion().setFromRotationMatrix(matrix);
+    return { centerPos: cp, quat: q };
+  }, [trackPoint, trackTangent, trackNormal]);
 
   return (
     <group ref={groupRef} position={centerPos} quaternion={quat}>
       {data.type === 'block' && (
         <group rotation={[0, 0, data.angle]}>
-          <mesh position={[TUBE_RADIUS - 1.2, 0, 0]}>
-            <boxGeometry args={[2, 2, 2]} />
-            <meshBasicMaterial color="#ff0044" toneMapped={false} />
-          </mesh>
-          <mesh position={[TUBE_RADIUS - 1.2, 0, 0]}>
-            <boxGeometry args={[2.2, 2.2, 2.2]} />
-            <meshBasicMaterial color="#ff0044" wireframe />
-          </mesh>
+          <mesh position={[TUBE_RADIUS - 1.2, 0, 0]} geometry={BLOCK_GEOM} material={BLOCK_MAT} />
+          <mesh position={[TUBE_RADIUS - 1.2, 0, 0]} geometry={BLOCK_WIRE_GEOM} material={BLOCK_WIRE_MAT} />
         </group>
       )}
 
       {data.type === 'ring' && (
         <group rotation={[0, 0, data.angle + (data.width / 2)]}>
-          <mesh>
+          <mesh material={OBSTACLE_RING_MAT}>
             <torusGeometry args={[TUBE_RADIUS - 1, 0.8, 8, 48, (Math.PI * 2) - data.width]} />
-            <meshBasicMaterial color="#ffaa00" toneMapped={false} />
           </mesh>
         </group>
       )}
 
-      {/* Separate group for rotating elements to avoid re-calculating parent matrix */}
       <group ref={spinnerRef}>
         {data.type === 'spinner' && (
-          <mesh rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.4, 0.4, TUBE_RADIUS * 1.95, 8]} />
-            <meshBasicMaterial color="#d400ff" toneMapped={false} />
-          </mesh>
+          <mesh rotation={[0, 0, Math.PI / 2]} geometry={SPINNER_GEOM} material={SPINNER_MAT} />
         )}
 
         {data.type === 'double-spinner' && (
           <group>
-            <mesh rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.3, 0.3, TUBE_RADIUS * 1.95, 8]} />
-              <meshBasicMaterial color="#ff0000" toneMapped={false} />
-            </mesh>
-            <mesh rotation={[0, 0, 0]}>
-              <cylinderGeometry args={[0.3, 0.3, TUBE_RADIUS * 1.95, 8]} />
-              <meshBasicMaterial color="#00ffff" toneMapped={false} />
-            </mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]} geometry={SPINNER_GEOM} material={DOUBLE_SPINNER_MAT_A} />
+            <mesh rotation={[0, 0, 0]} geometry={SPINNER_GEOM} material={DOUBLE_SPINNER_MAT_B} />
             <mesh>
               <sphereGeometry args={[0.8]} />
               <meshBasicMaterial color="white" />
@@ -543,57 +584,8 @@ export const Track: React.FC<TrackProps> = memo(({ gameStarted, isGameOver, leve
         </>
       )}
 
-      {/* DECORATIONS (Rings) - MEMOIZED to prevent massive re-render overhead */}
-      {useMemo(() => (
-        <>
-          {Array.from({ length: 120 }).map((_, i) => {
-            const t = (i / 120);
-            const pt = TRACK_CURVE.getPointAt(t);
-            const tan = TRACK_CURVE.getTangentAt(t);
-            const m = new THREE.Matrix4().lookAt(pt, pt.clone().add(tan), new Vector3(0, 1, 0));
-            const q = new THREE.Quaternion().setFromRotationMatrix(m);
-            return (
-              <mesh key={i} position={pt} quaternion={q}>
-                <torusGeometry args={[TUBE_RADIUS + 0.5, 0.1, 8, 32]} />
-                <meshBasicMaterial color="#00ffff" transparent opacity={0.2} />
-              </mesh>
-            )
-          })}
-
-          {isInfinite && (
-            <>
-              {/* Forward preview rings */}
-              {Array.from({ length: 60 }).map((_, i) => {
-                const t = (i / 120);
-                const pt = TRACK_CURVE.getPointAt(t).clone().add(new Vector3(0, 0, -2000));
-                const tan = TRACK_CURVE.getTangentAt(t);
-                const m = new THREE.Matrix4().lookAt(pt, pt.clone().add(tan), new Vector3(0, 1, 0));
-                const q = new THREE.Quaternion().setFromRotationMatrix(m);
-                return (
-                  <mesh key={`sec-fwd-${i}`} position={pt} quaternion={q}>
-                    <torusGeometry args={[TUBE_RADIUS + 0.5, 0.1, 8, 32]} />
-                    <meshBasicMaterial color="#00ffff" transparent opacity={0.2} />
-                  </mesh>
-                )
-              })}
-              {/* Backward preview rings */}
-              {progressRef.current < 0.3 && Array.from({ length: 40 }).map((_, i) => {
-                const t = 1.0 - (i / 120);
-                const pt = TRACK_CURVE.getPointAt(t).clone().add(new Vector3(0, 0, 2000));
-                const tan = TRACK_CURVE.getTangentAt(t);
-                const m = new THREE.Matrix4().lookAt(pt, pt.clone().add(tan), new Vector3(0, 1, 0));
-                const q = new THREE.Quaternion().setFromRotationMatrix(m);
-                return (
-                  <mesh key={`sec-back-${i}`} position={pt} quaternion={q}>
-                    <torusGeometry args={[TUBE_RADIUS + 0.5, 0.1, 8, 32]} />
-                    <meshBasicMaterial color="#00ffff" transparent opacity={0.2} />
-                  </mesh>
-                )
-              })}
-            </>
-          )}
-        </>
-      ), [isInfinite, progressRef.current < 0.3])}
+      {/* DECORATIONS (Rings) - Now using InstancedMesh for 120x performance boost */}
+      <InstancedRings isInfinite={isInfinite} progress={progressRef.current} />
 
       <group ref={playerRef} visible={gameStarted}>
         <group ref={ballRef}>

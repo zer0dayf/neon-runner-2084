@@ -9,7 +9,7 @@ export const Effects: React.FC = () => {
       <Bloom
         luminanceThreshold={0.25}
         luminanceSmoothing={0.9}
-        height={200}
+        height={128}
         intensity={1.2}
       />
     </EffectComposer>
