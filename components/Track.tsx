@@ -27,6 +27,7 @@ interface TrackProps {
   onLevelComplete: () => void;
   onScoreUpdate: (score: number) => void;
   onProgressUpdate: (progress: number) => void;
+  onSpeedUpdate?: (speedRatio: number) => void;
 }
 
 // --- Optimization: Shared Geometries and Materials ---
@@ -181,7 +182,7 @@ const ObstacleMesh: React.FC<{
 };
 
 
-export const Track: React.FC<TrackProps> = memo(({ gameStarted, isGameOver, level, isInfinite, paused, isSwipeControl, onGameOver, onLevelComplete, onScoreUpdate, onProgressUpdate }) => {
+export const Track: React.FC<TrackProps> = memo(({ gameStarted, isGameOver, level, isInfinite, paused, isSwipeControl, onGameOver, onLevelComplete, onScoreUpdate, onProgressUpdate, onSpeedUpdate }) => {
   const { camera } = useThree();
 
   // Game Logic Refs
@@ -190,6 +191,7 @@ export const Track: React.FC<TrackProps> = memo(({ gameStarted, isGameOver, leve
   const lapCountRef = useRef(0);
   const [currentLap, setCurrentLap] = useState(0);
   const lastReportedProgressRef = useRef(0);
+  const lastReportedSpeedRatioRef = useRef(0);
   const gameTimeRef = useRef(0);
   const currentScoreRef = useRef(0);
   const lastScoreTime = useRef(0);
@@ -358,6 +360,15 @@ export const Track: React.FC<TrackProps> = memo(({ gameStarted, isGameOver, leve
 
     if (gameStarted && !isGameOver && speedRef.current < currentMaxSpeed) {
       speedRef.current += 0.0000003 * (1 + (effectiveLevel - 1) * 0.1);
+    }
+
+    // Throttled speed ratio callback (only fires when ratio changes > 2%)
+    if (onSpeedUpdate && gameStarted && !isGameOver) {
+      const ratio = Math.min(speedRef.current / currentMaxSpeed, 1);
+      if (Math.abs(ratio - lastReportedSpeedRatioRef.current) > 0.02) {
+        lastReportedSpeedRatioRef.current = ratio;
+        onSpeedUpdate(ratio);
+      }
     }
 
     if (tunnelMatRef.current) {

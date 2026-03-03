@@ -16,6 +16,7 @@ interface UIOverlayProps {
     isSwipeControl: boolean;
     muted: boolean;
     paused: boolean;
+    speedRatio?: number;
     onToggleMute: () => void;
     onStartSystem: () => void;
     onBackToTitle: () => void;
@@ -30,7 +31,7 @@ interface UIOverlayProps {
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
     showTitleScreen, started, gameOver, levelComplete, level, maxUnlockedLevel, isInfinite, score, highScore, progress, bestProgress, isSwipeControl,
-    muted, paused,
+    muted, paused, speedRatio = 0,
     onToggleMute, onStartSystem, onBackToTitle, onSelectLevel, onSelectInfinite, onRestart, onReturnToMenu, onTogglePause, onQuit, onToggleControl
 }) => {
 
@@ -41,6 +42,16 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
         { id: 4, name: "CHAOS", desc: "Double Spinners" },
         { id: 5, name: "EVENT HORIZON", desc: "The Gauntlet" },
     ];
+
+    // Multiplier: 1.0x (idle) → 3.0x (full speed)
+    const multiplier = 1.0 + speedRatio * 2.0;
+    const multiplierText = multiplier.toFixed(1) + 'x';
+    // Color: cyan(1.0x) → lime(1.5x) → orange(2.2x) → magenta(3.0x)
+    const multiplierColor = speedRatio < 0.5
+        ? `hsl(${180 - speedRatio * 2 * 90}, 100%, 55%)`
+        : speedRatio < 0.85
+            ? `hsl(${90 - (speedRatio - 0.5) * 2 * 60}, 100%, 55%)`
+            : `hsl(310, 100%, 60%)`;
 
     return (
         <div className="absolute inset-0 pointer-events-none z-[10] select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
@@ -69,6 +80,33 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                             <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-bold text-pink-400 tracking-tighter uppercase whitespace-nowrap">BEST</div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* --- VELOCITY MULTIPLIER BADGE --- */}
+            {started && !gameOver && !levelComplete && (
+                <div
+                    className="absolute right-3 top-[4.5rem] z-[25] pointer-events-none flex flex-col items-center gap-0.5"
+                >
+                    <div
+                        className="text-[9px] font-bold tracking-widest uppercase font-mono"
+                        style={{ color: multiplierColor, opacity: 0.7 }}
+                    >
+                        SPEED
+                    </div>
+                    <div
+                        className="text-base font-black font-mono tracking-tight px-1.5 py-0.5 rounded border"
+                        style={{
+                            color: multiplierColor,
+                            borderColor: `${multiplierColor}60`,
+                            backgroundColor: `${multiplierColor}12`,
+                            boxShadow: speedRatio > 0.5 ? `0 0 8px ${multiplierColor}50` : 'none',
+                            textShadow: speedRatio > 0.7 ? `0 0 6px ${multiplierColor}` : 'none',
+                            transition: 'color 0.4s ease, box-shadow 0.4s ease',
+                        }}
+                    >
+                        {multiplierText}
+                    </div>
                 </div>
             )}
 

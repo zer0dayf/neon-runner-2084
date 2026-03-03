@@ -1,5 +1,5 @@
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GRID_COLOR } from '../constants';
@@ -136,27 +136,64 @@ export const StarField: React.FC = () => {
     )
 }
 
-// --- RETRO ARTIFACTS (Replaces FloatingDebris) ---
+// --- RETRO ARTIFACTS (Fully Instanced) ---
 
-// --- Shared Geometries for Artifacts ---
+// Shared geometries
 const BOX_GEOM = new THREE.BoxGeometry(1, 1, 1);
 const PLANE_GEOM = new THREE.PlaneGeometry(1, 1);
 const CIRCLE_GEOM = new THREE.CircleGeometry(1, 16);
+const TETRA_GEOM = new THREE.TetrahedronGeometry(1, 0);
 
-// --- Shared Materials for Artifacts ---
-const DARK_MAT = new THREE.MeshBasicMaterial({ color: "#1a1a1a" });
-const FLOPPY_MAT = new THREE.MeshBasicMaterial({ color: "#220044" });
-const CAR_MAT = new THREE.MeshBasicMaterial({ color: "#ff00cc" });
-const GLASS_MAT = new THREE.MeshBasicMaterial({ color: "#00ffff", transparent: true, opacity: 0.6 });
-const WHEEL_MAT = new THREE.MeshBasicMaterial({ color: "#000" });
-const LABEL_MAT = new THREE.MeshBasicMaterial({ color: "#e0e0e0" });
-const WHITE_MAT = new THREE.MeshBasicMaterial({ color: "#ffffff" });
+// Shared materials
+const DARK_MAT = new THREE.MeshBasicMaterial({ color: '#1a1a1a' });
+const FLOPPY_MAT = new THREE.MeshBasicMaterial({ color: '#220044' });
+const CAR_MAT = new THREE.MeshBasicMaterial({ color: '#ff00cc' });
+const GLASS_MAT = new THREE.MeshBasicMaterial({ color: '#00ffff', transparent: true, opacity: 0.6 });
+const WHEEL_MAT = new THREE.MeshBasicMaterial({ color: '#000000' });
+const LABEL_MAT = new THREE.MeshBasicMaterial({ color: '#e0e0e0' });
+const WHITE_MAT = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+const WIRE_CYAN_MAT = new THREE.MeshBasicMaterial({ color: '#00ffcc', wireframe: true });
+
+// Helpers
+const _m4 = new THREE.Matrix4();
+const _pos = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _scl = new THREE.Vector3();
+
+function setMatrix(
+    out: THREE.Matrix4,
+    x: number, y: number, z: number,
+    rx: number, ry: number, rz: number,
+    sx: number, sy: number, sz: number
+) {
+    _pos.set(x, y, z);
+    _quat.setFromEuler(new THREE.Euler(rx, ry, rz));
+    _scl.set(sx, sy, sz);
+    out.compose(_pos, _quat, _scl);
+}
+
+/** One InstancedMesh wrapper that syncs matrices once */
+const Instanced: React.FC<{
+    geom: THREE.BufferGeometry;
+    mat: THREE.Material;
+    matrices: THREE.Matrix4[];
+}> = ({ geom, mat, matrices }) => {
+    const ref = useRef<THREE.InstancedMesh>(null);
+    useEffect(() => {
+        if (!ref.current) return;
+        matrices.forEach((m, i) => ref.current!.setMatrixAt(i, m));
+        ref.current.instanceMatrix.needsUpdate = true;
+    }, []); // Only set once — these never move
+    return <instancedMesh ref={ref} args={[geom, mat, matrices.length]} />;
+};
 
 export const RetroArtifacts: React.FC = () => {
-    const items = useMemo(() => {
-        const temp = [];
+    // Build matrix lists per bucket once
+    const buckets = useMemo(() => {
+        // Each artifact has a world transform (pos, rot, scale) and a type 0-3
+        const artifacts: { pos: THREE.Vector3; rot: THREE.Euler; scale: number; type: number }[] = [];
         for (let i = 0; i < 60; i++) {
-            const z = 400 - (Math.random() * 1400);
+            const z = 400 - Math.random() * 1400;
             let x = (Math.random() - 0.5) * 600;
             if (Math.abs(x) < 40) x = 60 * Math.sign(x || 1);
             let y = (Math.random() - 0.5) * 400;
@@ -164,85 +201,81 @@ export const RetroArtifacts: React.FC = () => {
             const type = Math.floor(Math.random() * 4);
             const rot = new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
             const scale = type === 2 ? 5 : 6;
-            temp.push({ pos: new THREE.Vector3(x, y, z), rot, scale, type });
+            artifacts.push({ pos: new THREE.Vector3(x, y, z), rot, scale, type });
         }
-        return temp;
+
+        // --- Buckets: darkBox, floppyBox, labelPlane, whitePlane, circleLabel, carBody, glass, wheel, pyramid
+        const darkBox: THREE.Matrix4[] = [];
+        const floppyBox: THREE.Matrix4[] = [];
+        const labelPlane: THREE.Matrix4[] = [];
+        const whitePlane: THREE.Matrix4[] = [];
+        const circleLabel: THREE.Matrix4[] = [];
+        const carBody: THREE.Matrix4[] = [];
+        const glass: THREE.Matrix4[] = [];
+        const wheel: THREE.Matrix4[] = [];
+        const pyramid: THREE.Matrix4[] = [];
+
+        const tmpParent = new THREE.Matrix4();
+        const tmpLocal = new THREE.Matrix4();
+        const tmpResult = new THREE.Matrix4();
+
+        const addWorld = (
+            bucket: THREE.Matrix4[],
+            parentPos: THREE.Vector3, parentRot: THREE.Euler, parentScale: number,
+            lx: number, ly: number, lz: number,
+            lrx: number, lry: number, lrz: number,
+            lsx: number, lsy: number, lsz: number
+        ) => {
+            setMatrix(tmpParent, parentPos.x, parentPos.y, parentPos.z, parentRot.x, parentRot.y, parentRot.z, parentScale, parentScale, parentScale);
+            setMatrix(tmpLocal, lx, ly, lz, lrx, lry, lrz, lsx, lsy, lsz);
+            tmpResult.multiplyMatrices(tmpParent, tmpLocal);
+            bucket.push(tmpResult.clone());
+        };
+
+        for (const a of artifacts) {
+            const { pos, rot, scale, type } = a;
+            if (type === 0) {
+                // VHS: dark body + label (plane) + 2 circles
+                addWorld(darkBox, pos, rot, scale, 0, 0, 0, 0, 0, 0, 1.8, 1.0, 0.3);
+                addWorld(labelPlane, pos, rot, scale, 0, 0.1, 0.16, 0, 0, 0, 1.4, 0.6, 1);
+                addWorld(circleLabel, pos, rot, scale, -0.45, -0.1, 0.17, 0, 0, 0, 0.15, 0.15, 1);
+                addWorld(circleLabel, pos, rot, scale, 0.45, -0.1, 0.17, 0, 0, 0, 0.15, 0.15, 1);
+            } else if (type === 1) {
+                // Floppy: purple body + label + white strip
+                addWorld(floppyBox, pos, rot, scale, 0, 0, 0, 0, 0, 0, 1.4, 1.4, 0.1);
+                addWorld(labelPlane, pos, rot, scale, 0, 0.4, 0.06, 0, 0, 0, 0.8, 0.5, 1);
+                addWorld(whitePlane, pos, rot, scale, 0, -0.3, 0.06, 0, 0, 0, 1.0, 0.4, 1);
+            } else if (type === 2) {
+                // Retro Car: body + windscreen + 4 wheels
+                const carRot = new THREE.Euler(rot.x, rot.y - Math.PI / 2, rot.z);
+                addWorld(carBody, pos, carRot, scale, 0, 0, 0, 0, 0, 0, 2.5, 0.6, 1.1);
+                addWorld(glass, pos, carRot, scale, -0.2, 0.4, 0, 0, 0, 0, 1.2, 0.5, 0.9);
+                addWorld(wheel, pos, carRot, scale, 0.7, -0.3, 0.5, 0, 0, 0, 0.4, 0.4, 0.2);
+                addWorld(wheel, pos, carRot, scale, -0.7, -0.3, 0.5, 0, 0, 0, 0.4, 0.4, 0.2);
+                addWorld(wheel, pos, carRot, scale, 0.7, -0.3, -0.5, 0, 0, 0, 0.4, 0.4, 0.2);
+                addWorld(wheel, pos, carRot, scale, -0.7, -0.3, -0.5, 0, 0, 0, 0.4, 0.4, 0.2);
+            } else {
+                // Pyramid wireframe
+                const pyRot = new THREE.Euler(rot.x + Math.PI / 4, rot.y, rot.z + Math.PI / 4);
+                addWorld(pyramid, pos, pyRot, scale, 0, 0, 0, 0, 0, 0, 1, 1, 1);
+            }
+        }
+
+        return { darkBox, floppyBox, labelPlane, whitePlane, circleLabel, carBody, glass, wheel, pyramid };
     }, []);
 
-    // Create instanced groups for each primitive type/material combination
-    // This is a tradeoff: more code, but extremely fast rendering (draw calls 240 -> ~10)
     return (
         <group>
-            <InstancedArtifactParts items={items} />
+            {buckets.darkBox.length > 0 && <Instanced geom={BOX_GEOM} mat={DARK_MAT} matrices={buckets.darkBox} />}
+            {buckets.floppyBox.length > 0 && <Instanced geom={BOX_GEOM} mat={FLOPPY_MAT} matrices={buckets.floppyBox} />}
+            {buckets.labelPlane.length > 0 && <Instanced geom={PLANE_GEOM} mat={LABEL_MAT} matrices={buckets.labelPlane} />}
+            {buckets.whitePlane.length > 0 && <Instanced geom={PLANE_GEOM} mat={WHITE_MAT} matrices={buckets.whitePlane} />}
+            {buckets.circleLabel.length > 0 && <Instanced geom={CIRCLE_GEOM} mat={LABEL_MAT} matrices={buckets.circleLabel} />}
+            {buckets.carBody.length > 0 && <Instanced geom={BOX_GEOM} mat={CAR_MAT} matrices={buckets.carBody} />}
+            {buckets.glass.length > 0 && <Instanced geom={BOX_GEOM} mat={GLASS_MAT} matrices={buckets.glass} />}
+            {buckets.wheel.length > 0 && <Instanced geom={BOX_GEOM} mat={WHEEL_MAT} matrices={buckets.wheel} />}
+            {buckets.pyramid.length > 0 && <Instanced geom={TETRA_GEOM} mat={WIRE_CYAN_MAT} matrices={buckets.pyramid} />}
         </group>
     );
 };
 
-const InstancedArtifactParts: React.FC<{ items: any[] }> = ({ items }) => {
-    const meshRef = useRef<THREE.InstancedMesh>(null);
-
-    // We'll use a slightly different approach here for simplicity: 
-    // Just wrap the items in a way that respects the original positions
-    // Actually, to truly optimize, we'd need one InstancedMesh per part.
-    // Given 60 items, even semi-instancing is better.
-
-    return (
-        <>
-            {items.map((item, i) => (
-                <ArtifactItem key={i} {...item} />
-            ))}
-        </>
-    );
-};
-
-// ... existing code for geometries ...
-// Actually, I'll stick to sharing geometries/materials in ArtifactItem for now 
-// as true mesh instancing for multi-part objects in React is very verbose.
-// Shared Geometries/Materials already give 50% of the win.
-
-const ArtifactItem: React.FC<any> = ({ pos, rot, scale, type }) => {
-    const s = [scale, scale, scale] as [number, number, number];
-    return (
-        <group position={pos} rotation={rot} scale={s}>
-            {type === 0 && <VHSGeometry />}
-            {type === 1 && <FloppyGeometry />}
-            {type === 2 && <RetroCarGeometry />}
-            {type === 3 && <SynthPyramidGeometry />}
-        </group>
-    )
-}
-
-const VHSGeometry = () => (
-    <group>
-        <mesh geometry={BOX_GEOM} material={DARK_MAT} scale={[1.8, 1.0, 0.3]} />
-        <mesh position={[0, 0.1, 0.16]} geometry={PLANE_GEOM} material={LABEL_MAT} scale={[1.4, 0.6, 1]} />
-        <mesh position={[-0.45, -0.1, 0.17]} geometry={CIRCLE_GEOM} material={LABEL_MAT} scale={[0.15, 0.15, 1]} />
-        <mesh position={[0.45, -0.1, 0.17]} geometry={CIRCLE_GEOM} material={LABEL_MAT} scale={[0.15, 0.15, 1]} />
-    </group>
-)
-
-const FloppyGeometry = () => (
-    <group>
-        <mesh geometry={BOX_GEOM} material={FLOPPY_MAT} scale={[1.4, 1.4, 0.1]} />
-        <mesh position={[0, 0.4, 0.06]} geometry={PLANE_GEOM} material={LABEL_MAT} scale={[0.8, 0.5, 1]} />
-        <mesh position={[0, -0.3, 0.06]} geometry={PLANE_GEOM} material={WHITE_MAT} scale={[1.0, 0.4, 1]} />
-    </group>
-)
-
-const RetroCarGeometry = () => (
-    <group rotation={[0, -Math.PI / 2, 0]}>
-        <mesh geometry={BOX_GEOM} material={CAR_MAT} scale={[2.5, 0.6, 1.1]} />
-        <mesh position={[-0.2, 0.4, 0]} geometry={BOX_GEOM} material={GLASS_MAT} scale={[1.2, 0.5, 0.9]} />
-        <mesh position={[0.7, -0.3, 0.5]} geometry={BOX_GEOM} material={WHEEL_MAT} scale={[0.4, 0.4, 0.2]} />
-        <mesh position={[-0.7, -0.3, 0.5]} geometry={BOX_GEOM} material={WHEEL_MAT} scale={[0.4, 0.4, 0.2]} />
-        <mesh position={[0.7, -0.3, -0.5]} geometry={BOX_GEOM} material={WHEEL_MAT} scale={[0.4, 0.4, 0.2]} />
-        <mesh position={[-0.7, -0.3, -0.5]} geometry={BOX_GEOM} material={WHEEL_MAT} scale={[0.4, 0.4, 0.2]} />
-    </group>
-)
-
-const SynthPyramidGeometry = () => (
-    <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
-        <tetrahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color="#00ffcc" wireframe />
-    </mesh>
-)

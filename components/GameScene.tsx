@@ -17,11 +17,12 @@ interface GameSceneProps {
   onLevelComplete: () => void;
   onScoreUpdate: (score: number) => void;
   onProgressUpdate: (progress: number) => void;
+  onSpeedUpdate?: (speedRatio: number) => void;
 }
 
 export const GameScene: React.FC<GameSceneProps> = ({
   gameStarted, isGameOver, level, isInfinite, paused, isSwipeControl,
-  onGameOver, onLevelComplete, onScoreUpdate, onProgressUpdate
+  onGameOver, onLevelComplete, onScoreUpdate, onProgressUpdate, onSpeedUpdate
 }) => {
   return (
     <>
@@ -45,6 +46,7 @@ export const GameScene: React.FC<GameSceneProps> = ({
           onLevelComplete={onLevelComplete}
           onScoreUpdate={onScoreUpdate}
           onProgressUpdate={onProgressUpdate}
+          onSpeedUpdate={onSpeedUpdate}
         />
 
         <SynthwaveSun isInfinite={isInfinite} />

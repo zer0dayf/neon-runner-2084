@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { GameScene } from './components/GameScene';
 import { UIOverlay } from './components/UIOverlay';
 import { AudioManager } from './components/AudioManager';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 const App: React.FC = () => {
   const [showTitleScreen, setShowTitleScreen] = useState(true);
@@ -15,6 +16,9 @@ const App: React.FC = () => {
 
   // --- YENİ: Progress State ---
   const [progress, setProgress] = useState(0);
+
+  // --- Speed Ratio State (0-1, used for velocity bar HUD) ---
+  const [speedRatio, setSpeedRatio] = useState(0);
 
   // --- YENİ: Control Mode State (True = Swipe, False = Tap) ---
   const [isSwipeControl, setIsSwipeControl] = useState(true);
@@ -116,6 +120,9 @@ const App: React.FC = () => {
     setGameOver((prev) => {
       if (prev) return prev;
 
+      // Haptic feedback: strong impact on crash
+      Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => { });
+
       if (isInfiniteMode) {
         setHighScore(curr => {
           const newHigh = Math.max(curr, score);
@@ -129,6 +136,9 @@ const App: React.FC = () => {
 
   const handleLevelComplete = useCallback(() => {
     if (isInfiniteMode) return;
+
+    // Haptic feedback: medium impact on level complete
+    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => { });
 
     setLevelComplete(true);
     setGameStarted(false);
@@ -163,6 +173,10 @@ const App: React.FC = () => {
     setScore(newScore);
   }, []);
 
+  const handleSpeedUpdate = useCallback((ratio: number) => {
+    setSpeedRatio(ratio);
+  }, []);
+
   const handleTogglePause = useCallback(() => {
     if (!gameStarted || gameOver || levelComplete) return;
     setPaused(prev => !prev);
@@ -184,7 +198,7 @@ const App: React.FC = () => {
       />
 
       <Canvas
-        key={resetKey}
+        {...{ key: resetKey }}
         // Mobil performans optimizasyonu
         dpr={[1, 1.5]}
         gl={{
@@ -206,6 +220,7 @@ const App: React.FC = () => {
           onLevelComplete={handleLevelComplete}
           onScoreUpdate={handleScoreUpdate}
           onProgressUpdate={handleProgressUpdate}
+          onSpeedUpdate={handleSpeedUpdate}
         />
       </Canvas>
 
@@ -234,6 +249,7 @@ const App: React.FC = () => {
         onToggleControl={handleToggleControl} // --- Gönderildi
         muted={muted}
         onToggleMute={toggleMute}
+        speedRatio={speedRatio}
       />
     </div>
   );
