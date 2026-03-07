@@ -1,32 +1,15 @@
-MIT License
+Copyright (c) 2024-2026 Efe (zer0dayf)
 
-Copyright (c) 2024-2026 zer0dayf
+All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software, including but not limited to its source code, assets (audio, images, 3D models), design elements, and associated documentation (the "Software"), is the proprietary property of Efe (zer0dayf). 
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The source code may be publicly available for viewing or educational purposes on code-hosting platforms, but **NO PERMISSION** is granted to:
+1. Copy, modify, or merge the Software.
+2. Distribute, sublicense, or sell copies of the Software.
+3. Use the Software or any of its constituent parts for commercial purposes.
+4. Publish or reproduce the game assets or design anywhere else.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Any unauthorized use, reproduction, or distribution of this Software, in whole or in part, without the prior written consent of the copyright owner is strictly prohibited and may result in legal action. 
 
----
-
-ADDITIONAL TERMS FOR NEON RUNNER 2084:
-
-The game assets (including but not limited to audio files, images, and game
-design elements) are NOT covered by the MIT license above and remain the
-exclusive property of the copyright holder. The MIT license applies only to
-the source code.
-
-For commercial licensing inquiries, contact the repository owner.
+For commercial licensing or usage inquiries, please contact the repository owner directly.
