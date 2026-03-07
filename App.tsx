@@ -137,8 +137,18 @@ const App: React.FC = () => {
   const handleLevelComplete = useCallback(() => {
     if (isInfiniteMode) return;
 
-    // Haptic feedback: medium impact on level complete
-    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => { });
+    // Haptic feedback: dopamine-inducing pattern for level complete!
+    const triggerVictoryHaptics = async () => {
+      try {
+        await Haptics.impact({ style: ImpactStyle.Light });
+        setTimeout(async () => await Haptics.impact({ style: ImpactStyle.Light }), 100);
+        setTimeout(async () => await Haptics.impact({ style: ImpactStyle.Medium }), 250);
+        setTimeout(async () => await Haptics.impact({ style: ImpactStyle.Heavy }), 450);
+      } catch (e) {
+        // ignore errors on devices without haptic support
+      }
+    };
+    triggerVictoryHaptics();
 
     setLevelComplete(true);
     setGameStarted(false);

@@ -67,7 +67,12 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                         {/* Current Progress bar */}
                         <div
                             className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_10px_rgba(0,255,255,0.6)]"
-                            style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
+                            style={{ 
+                                width: '100%', 
+                                transform: `scaleX(${progress / 100})`, 
+                                transformOrigin: 'left',
+                                transition: 'transform 0.1s linear' 
+                            }}
                         />
                     </div>
 
@@ -86,7 +91,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             {/* --- VELOCITY MULTIPLIER BADGE --- */}
             {started && !gameOver && !levelComplete && (
                 <div
-                    className="absolute right-3 top-[4.5rem] z-[25] pointer-events-none flex flex-col items-center gap-0.5"
+                    className="absolute right-3 top-[6.5rem] md:top-[7.5rem] z-[25] pointer-events-none flex flex-col items-center gap-0.5"
                 >
                     <div
                         className="text-[9px] font-bold tracking-widest uppercase font-mono"
@@ -185,29 +190,33 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
                         <div className="flex flex-col gap-4 w-64 landscape:w-48">
                             <button
+                                onTouchStart={(e) => e.stopPropagation()}
                                 onClick={(e) => { e.stopPropagation(); onTogglePause(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-cyan-600/20 border border-cyan-500 text-cyan-300 font-bold tracking-wider hover:bg-cyan-500 hover:text-black transition-all flex items-center justify-center"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-cyan-600/20 border border-cyan-500 text-cyan-300 font-bold tracking-wider active:bg-cyan-500 active:text-black md:hover:bg-cyan-500 md:hover:text-black transition-all flex items-center justify-center select-none"
                             >
                                 <Play className="inline mr-2" size={20} /> RESUME
                             </button>
 
                             <button
+                                onTouchStart={(e) => e.stopPropagation()}
                                 onClick={(e) => { e.stopPropagation(); onToggleControl(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-yellow-500 text-yellow-400 font-bold tracking-wider hover:bg-yellow-500/20 transition-all flex items-center justify-center gap-2"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-yellow-500 text-yellow-400 font-bold tracking-wider active:bg-yellow-500/20 md:hover:bg-yellow-500/20 transition-all flex items-center justify-center gap-2 select-none"
                             >
                                 {isSwipeControl ? <Hand size={20} /> : <MousePointerClick size={20} />}
                                 {isSwipeControl ? "MODE: SWIPE" : "MODE: TAP"}
                             </button>
 
                             <button
+                                onTouchStart={(e) => e.stopPropagation()}
                                 onClick={(e) => { e.stopPropagation(); onRestart(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-white/50 text-white font-bold tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-white/50 text-white font-bold tracking-wider active:bg-white active:text-black md:hover:bg-white md:hover:text-black transition-all flex items-center justify-center select-none"
                             >
                                 <RotateCcw className="inline mr-2" size={20} /> RESTART
                             </button>
                             <button
+                                onTouchStart={(e) => e.stopPropagation()}
                                 onClick={(e) => { e.stopPropagation(); onQuit(); }}
-                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider hover:bg-red-950 transition-all flex items-center justify-center"
+                                className="cursor-pointer pointer-events-auto px-6 py-3 landscape:py-2 bg-transparent border border-red-800 text-red-500 font-bold tracking-wider active:bg-red-950 md:hover:bg-red-950 transition-all flex items-center justify-center select-none"
                             >
                                 <LogOut className="inline mr-2" size={20} /> QUIT
                             </button>
@@ -335,8 +344,8 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             {!showTitleScreen && started && !gameOver && !levelComplete && (
                 <div className="absolute top-8 left-4 md:left-8 p-0 flex flex-col gap-4 pointer-events-none z-[30]">
                     <div className="flex gap-4">
-                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-3 border border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto">{paused ? <Play size={24} /> : <Pause size={24} />}</button>
-                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onToggleMute(); }} className="p-3 border border-pink-500 text-pink-500 hover:bg-pink-500 hover:text-white transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto">{muted ? <VolumeX size={24} /> : <Volume2 size={24} />}</button>
+                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-3 border border-cyan-500 text-cyan-500 active:bg-cyan-500 active:text-black md:hover:bg-cyan-500 md:hover:text-black transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto select-none">{paused ? <Play size={24} /> : <Pause size={24} />}</button>
+                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onToggleMute(); }} className="p-3 border border-pink-500 text-pink-500 active:bg-pink-500 active:text-white md:hover:bg-pink-500 md:hover:text-white transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto select-none">{muted ? <VolumeX size={24} /> : <Volume2 size={24} />}</button>
                     </div>
                 </div>
             )}
