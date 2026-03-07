@@ -42,3 +42,4 @@ key.properties
 
 # Capacitor
 capacitor.config.local.ts
+android/keystore.properties
