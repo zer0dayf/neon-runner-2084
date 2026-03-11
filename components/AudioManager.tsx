@@ -3,7 +3,8 @@ import React, { useEffect, useRef, memo } from 'react';
 interface AudioManagerProps {
   url: string;
   started: boolean;
-  muted: boolean;
+  musicEnabled: boolean;
+  sfxEnabled: boolean;
   gameOver: boolean;
   levelComplete?: boolean;
 }
@@ -115,7 +116,7 @@ class WebAudioEngine {
 // Singleton Instance
 const engine = new WebAudioEngine();
 
-export const AudioManager = memo<AudioManagerProps>(({ url, started, muted, gameOver, levelComplete }) => {
+export const AudioManager = memo<AudioManagerProps>(({ url, started, musicEnabled, sfxEnabled, gameOver, levelComplete }) => {
 
   useEffect(() => {
     const setup = async () => {
@@ -154,16 +155,16 @@ export const AudioManager = memo<AudioManagerProps>(({ url, started, muted, game
 
   // Sync Volume
   useEffect(() => {
-    const bgmVol = muted ? 0 : (levelComplete ? 0.08 : 0.4);
+    const bgmVol = !musicEnabled ? 0 : (levelComplete ? 0.08 : 0.4);
     engine.setBGMVolume(bgmVol);
-    engine.setSFXVolume(muted ? 0 : 0.6);
-  }, [muted, levelComplete]);
+    engine.setSFXVolume(!sfxEnabled ? 0 : 0.6);
+  }, [musicEnabled, sfxEnabled, levelComplete]);
 
   // Sync State
   useEffect(() => {
     if (started && !gameOver) {
       engine.resume();
-      engine.playBGM('bgm', muted ? 0 : 0.4);
+      engine.playBGM('bgm', !musicEnabled ? 0 : 0.4);
     } else {
       engine.stopBGM();
     }
@@ -171,12 +172,12 @@ export const AudioManager = memo<AudioManagerProps>(({ url, started, muted, game
 
   // Handle SFX Triggers
   useEffect(() => {
-    if (gameOver && !muted) engine.playSFX('crash');
-  }, [gameOver, muted]);
+    if (gameOver && sfxEnabled) engine.playSFX('crash');
+  }, [gameOver, sfxEnabled]);
 
   useEffect(() => {
-    if (levelComplete && !muted) engine.playSFX('win');
-  }, [levelComplete, muted]);
+    if (levelComplete && sfxEnabled) engine.playSFX('win');
+  }, [levelComplete, sfxEnabled]);
 
   return null;
 });

@@ -12,7 +12,32 @@ const App: React.FC = () => {
   const [levelComplete, setLevelComplete] = useState(false);
   const [paused, setPaused] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const [muted, setMuted] = useState(false);
+
+  // --- Audio State ---
+  const [musicEnabled, setMusicEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_music');
+      return saved !== null ? saved === 'true' : true;
+    }
+    return true;
+  });
+  const [sfxEnabled, setSfxEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_sfx');
+      return saved !== null ? saved === 'true' : true;
+    }
+    return true;
+  });
+
+  // --- Tutorial State ---
+  const [tutorialCompleted, setTutorialCompleted] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neon_runner_tutorial_completed');
+      return saved === 'true';
+    }
+    return false;
+  });
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // --- YENİ: Progress State ---
   const [progress, setProgress] = useState(0);
@@ -57,8 +82,27 @@ const App: React.FC = () => {
     return 0;
   });
 
-  const toggleMute = useCallback(() => {
-    setMuted(prev => !prev);
+  const handleToggleMusic = useCallback(() => {
+    setMusicEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('neon_runner_music', String(next));
+      return next;
+    });
+  }, []);
+
+  const handleToggleSfx = useCallback(() => {
+    setSfxEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('neon_runner_sfx', String(next));
+      return next;
+    });
+  }, []);
+
+  const handleCompleteTutorial = useCallback(() => {
+    setTutorialCompleted(true);
+    setShowTutorial(false);
+    localStorage.setItem('neon_runner_tutorial_completed', 'true');
+    setPaused(false);
   }, []);
 
   const handleStartSystem = useCallback(() => {
@@ -79,10 +123,15 @@ const App: React.FC = () => {
     setLevelComplete(false);
     setScore(0);
     setProgress(0);
-    setPaused(false);
+    
+    // Tutorial check
+    const isFirstTimePlay = selectedLevel === 1 && !tutorialCompleted;
+    setPaused(isFirstTimePlay);
+    setShowTutorial(isFirstTimePlay);
+
     setResetKey(prev => prev + 1);
     setGameStarted(true);
-  }, [maxUnlockedLevel]);
+  }, [maxUnlockedLevel, tutorialCompleted]);
 
   const handleSelectInfinite = useCallback(() => {
     setIsInfiniteMode(true);
@@ -202,7 +251,8 @@ const App: React.FC = () => {
       <AudioManager
         url="soundtrack.mp3"
         started={!showTitleScreen}
-        muted={muted}
+        musicEnabled={musicEnabled}
+        sfxEnabled={sfxEnabled}
         gameOver={gameOver}
         levelComplete={levelComplete}
       />
@@ -257,8 +307,13 @@ const App: React.FC = () => {
         bestProgress={bestProgressPerLevel[level] || 0}
         isSwipeControl={isSwipeControl} // --- Gönderildi
         onToggleControl={handleToggleControl} // --- Gönderildi
-        muted={muted}
-        onToggleMute={toggleMute}
+        musicEnabled={musicEnabled}
+        sfxEnabled={sfxEnabled}
+        onToggleMusic={handleToggleMusic}
+        onToggleSfx={handleToggleSfx}
+        showTutorial={showTutorial}
+        onCompleteTutorial={handleCompleteTutorial}
+        onSkipTutorial={handleCompleteTutorial}
         speedRatio={speedRatio}
       />
     </div>

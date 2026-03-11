@@ -1,5 +1,6 @@
 import React from 'react';
-import { Volume2, VolumeX, Lock, Play, RotateCcw, Menu, CheckCircle, Infinity, Pause, LogOut, ArrowLeft, Hand, MousePointerClick } from 'lucide-react';
+import { Volume2, VolumeX, Lock, Play, RotateCcw, Menu, CheckCircle, Infinity, Pause, LogOut, ArrowLeft, Hand, MousePointerClick, Music } from 'lucide-react';
+import { TutorialOverlay } from './TutorialOverlay';
 
 interface UIOverlayProps {
     showTitleScreen: boolean;
@@ -14,10 +15,13 @@ interface UIOverlayProps {
     progress: number;
     bestProgress: number;
     isSwipeControl: boolean;
-    muted: boolean;
+    musicEnabled: boolean;
+    sfxEnabled: boolean;
+    showTutorial: boolean;
     paused: boolean;
     speedRatio?: number;
-    onToggleMute: () => void;
+    onToggleMusic: () => void;
+    onToggleSfx: () => void;
     onStartSystem: () => void;
     onBackToTitle: () => void;
     onSelectLevel: (level: number) => void;
@@ -27,12 +31,14 @@ interface UIOverlayProps {
     onTogglePause: () => void;
     onQuit: () => void;
     onToggleControl: () => void;
+    onCompleteTutorial: () => void;
+    onSkipTutorial: () => void;
 }
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
     showTitleScreen, started, gameOver, levelComplete, level, maxUnlockedLevel, isInfinite, score, highScore, progress, bestProgress, isSwipeControl,
-    muted, paused, speedRatio = 0,
-    onToggleMute, onStartSystem, onBackToTitle, onSelectLevel, onSelectInfinite, onRestart, onReturnToMenu, onTogglePause, onQuit, onToggleControl
+    musicEnabled, sfxEnabled, showTutorial, paused, speedRatio = 0,
+    onToggleMusic, onToggleSfx, onStartSystem, onBackToTitle, onSelectLevel, onSelectInfinite, onRestart, onReturnToMenu, onTogglePause, onQuit, onToggleControl, onCompleteTutorial, onSkipTutorial
 }) => {
 
     const STAGES = [
@@ -345,7 +351,17 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                 <div className="absolute top-8 left-4 md:left-8 p-0 flex flex-col gap-4 pointer-events-none z-[30]">
                     <div className="flex gap-4">
                         <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-3 border border-cyan-500 text-cyan-500 active:bg-cyan-500 active:text-black md:hover:bg-cyan-500 md:hover:text-black transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto select-none">{paused ? <Play size={24} /> : <Pause size={24} />}</button>
-                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onToggleMute(); }} className="p-3 border border-pink-500 text-pink-500 active:bg-pink-500 active:text-white md:hover:bg-pink-500 md:hover:text-white transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto select-none">{muted ? <VolumeX size={24} /> : <Volume2 size={24} />}</button>
+                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onToggleMusic(); }} className="p-3 border border-pink-500 text-pink-500 active:bg-pink-500 active:text-white md:hover:bg-pink-500 md:hover:text-white transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto select-none">
+                            {musicEnabled ? <Music size={24} /> : (
+                                <div className="relative">
+                                    <Music size={24} className="opacity-50" />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-[124%] h-0.5 bg-current rotate-45 transform origin-center"></div>
+                                    </div>
+                                </div>
+                            )}
+                        </button>
+                        <button onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onToggleSfx(); }} className="p-3 border border-pink-500 text-pink-500 active:bg-pink-500 active:text-white md:hover:bg-pink-500 md:hover:text-white transition-all rounded-sm backdrop-blur-sm cursor-pointer pointer-events-auto select-none">{sfxEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}</button>
                     </div>
                 </div>
             )}
@@ -356,6 +372,14 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                 <h2 className="text-xl font-bold text-cyan-400 mb-2">PLEASE ROTATE DEVICE</h2>
                 <p className="text-gray-400 text-sm">Neon Runner requires landscape mode for optimal performance.</p>
             </div>
+
+            {showTutorial && (
+                <TutorialOverlay
+                    onComplete={onCompleteTutorial}
+                    onSkip={onSkipTutorial}
+                    isSwipeControl={isSwipeControl}
+                />
+            )}
 
         </div>
     );
